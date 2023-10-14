@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "fastapi-simple-microsoft-auth"
+version = "0.0.1"
+description = "Simple Microsoft Azure AD (Entra ID) Authentication for your FastAPI App"
+authors = ["Rhuan Barreto <rhuan@barreto.work>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "fastapi_simple_microsoft_auth"}]
+homepage = "https://github.com/rhuanbarreto/fastapi-simple-microsoft-auth"
+repository = "https://github.com/rhuanbarreto/fastapi-simple-microsoft-auth"
+documentation = "https://github.com/rhuanbarreto/fastapi-simple-microsoft-auth"
+
+[tool.poetry.dependencies]
+python = ">=3.8 <4"
+fastapi = "^0.103.2"
+httpx = "^0.25.0"
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+
+[tool.poetry.group.dev.dependencies]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
