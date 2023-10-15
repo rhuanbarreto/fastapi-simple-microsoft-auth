@@ -17,6 +17,7 @@ httpx = "^0.25.0"
 python-jose = {extras = ["cryptography"], version = "^3.3.0"}
 
 [tool.poetry.group.dev.dependencies]
+uvicorn = "^0.23.2"
 
 [build-system]
 requires = ["poetry-core"]
