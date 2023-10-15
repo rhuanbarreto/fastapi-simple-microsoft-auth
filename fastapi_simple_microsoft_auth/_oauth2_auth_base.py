@@ -10,21 +10,17 @@ env_client_id = getenv("OAUTH_CLIENT_ID")
 env_tenant_id = getenv("OAUTH_TENANT_ID")
 
 
-class GraphAPISingleTenantAuth(OAuth2AuthorizationCodeBearer):
-    """Implement Graph API Token Authentication.
+class Oauth2AuthBase(OAuth2AuthorizationCodeBearer):
+    """Implement Microsoft Entra ID Token Authentication.
 
-    This class extends the OAuth2AuthorizationCodeBearer class to provide
-    authentication for the Microsoft Graph API.
+    This class extends the OAuth2AuthorizationCodeBearer class to provide authentication for Microsoft Entra ID.
 
-    It validates the token received against the tenant keys and the
-    `User.Read` scope. It also adds two state variables to the request
-    object: `decoded_token` and `raw_token`.
+    It validates the token received against the tenant keys and the `User.Read` scope. It also adds two state variables
+     to the request object: `decoded_token` and `raw_token`.
 
-    `decoded_token` is the decoded token which can be used to get more info
-    about the user.
+    `decoded_token` is the decoded token which can be used to get more info about the user.
 
-    `raw_token` is the raw token which can be used for OBO flows or anything
-    else you want to do with it.
+    `raw_token` is the raw token which can be used for OBO flows or anything else you want to do with it.
     """
 
     def __init__(
@@ -32,6 +28,7 @@ class GraphAPISingleTenantAuth(OAuth2AuthorizationCodeBearer):
         *,
         tenant_id: str | None = env_tenant_id,
         client_id: str | None = env_client_id,
+        url_tenant_id: str | None = env_tenant_id or "common",
         auto_error: bool = True,
     ) -> None:
         if not tenant_id:
@@ -39,15 +36,15 @@ class GraphAPISingleTenantAuth(OAuth2AuthorizationCodeBearer):
         if not client_id:
             raise HTTPException(status_code=500, detail="Missing client_id")
         super().__init__(
-            authorizationUrl=f"https://login.microsoftonline.com/{tenant_id}/oauth2/authorize",
-            tokenUrl=f"https://login.microsoftonline.com/{tenant_id}/oauth2/token",
+            authorizationUrl=f"https://login.microsoftonline.com/{url_tenant_id}/oauth2/authorize",
+            tokenUrl=f"https://login.microsoftonline.com/{url_tenant_id}/oauth2/token",
             description="Graph API Token Authentication. `Leave client_secret blank`",
             scheme_name="GraphAPITokenAuth",
             scopes={"User.Read": "User.Read"},
             auto_error=auto_error,
         )
         self.scope = "User.Read"
-        self.keys_url = f"https://login.microsoftonline.com/{tenant_id}/discovery/keys?appid={client_id}"
+        self.keys_url = f"https://login.microsoftonline.com/{url_tenant_id}/discovery/keys?appid={client_id}"
         self.tenant_keys: dict | None = None
         self.client_id = client_id
         self.tenant_id = tenant_id
