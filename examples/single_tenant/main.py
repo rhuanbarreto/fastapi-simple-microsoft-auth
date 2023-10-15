@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Security
+from fastapi import FastAPI, Request, Security
 
 from fastapi_simple_microsoft_auth import OAuth2SingleTenantAuth
 
@@ -28,5 +28,5 @@ async def _() -> None:
 
 
 @app.get("/", tags=["Test"])
-async def main() -> str:
-    return "Hello World!"
+async def main(req: Request) -> str:
+    return f"Hello {req.state.decoded_token['given_name']}!"
