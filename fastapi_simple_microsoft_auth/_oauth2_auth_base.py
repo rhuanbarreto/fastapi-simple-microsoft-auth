@@ -114,7 +114,7 @@ class Oauth2AuthBase(OAuth2AuthorizationCodeBearer):
         """
         if self.tenant_keys is None:
             await self.load_keys()
-        if not self.tenant_keys:  # Redundant check, but mypy doesn't like it if I don't do this.
+        if not self.tenant_keys:
             raise HTTPException(status_code=500, detail="Missing signing keys")
 
         try:
@@ -137,8 +137,13 @@ class Oauth2AuthBase(OAuth2AuthorizationCodeBearer):
 
         token_scope_string: str | None = decoded_token.get("scp")
         if token_scope_string is None:
-            raise HTTPException(status_code=401, detail="Invalid Token. Missing Scopes.")
+            raise HTTPException(
+                status_code=401, detail="Invalid Token. Missing Scopes."
+            )
         token_scopes = token_scope_string.split(" ")
         if self.scope not in token_scopes:
-            raise HTTPException(status_code=401, detail="Invalid Token. Scope `User.Read` must be present.")
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid Token. Scope `User.Read` must be present.",
+            )
         return decoded_token
