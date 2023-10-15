@@ -1,0 +1,32 @@
+from fastapi import FastAPI, Security
+
+from fastapi_simple_microsoft_auth import OAuth2MultiTenantAuth
+
+
+_azure_scheme = OAuth2MultiTenantAuth(
+    tenant_id="add_your_tenant_id_here",
+    client_id="add_your_client_id_here",
+)
+
+app = FastAPI(
+    title="Multi Tenant Microsoft Auth",
+    description="Multi Tenant Microsoft Auth",
+    version="1.0.0",
+    swagger_ui_init_oauth={
+        "clientId": _azure_scheme.client_id,
+        "usePkceWithAuthorizationCodeGrant": True,
+        "scopes": "User.Read",
+    },
+    dependencies=[Security(_azure_scheme)],
+)
+
+
+@app.on_event("startup")
+async def _() -> None:
+    """Load OpenID config on startup."""
+    await _azure_scheme.load_keys()
+
+
+@app.get("/", tags=["Test"])
+async def main() -> str:
+    return "Hello World!"
