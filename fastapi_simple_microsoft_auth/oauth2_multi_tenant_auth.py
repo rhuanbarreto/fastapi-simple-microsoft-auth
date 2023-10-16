@@ -22,9 +22,6 @@ class OAuth2MultiTenantAuth(Oauth2AuthBase):
         super().__init__(
             client_id=client_id,
             tenant_id=tenant_id,
-            url_tenant_id="organizations",
+            url_tenant_id=tenant_id,
             auto_error=auto_error,
-        )
-        self.keys_url = (
-            f"https://login.microsoftonline.com/common/discovery/keys?appid={client_id}"
         )

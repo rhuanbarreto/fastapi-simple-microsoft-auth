@@ -3,7 +3,7 @@ from typing import Any
 
 from fastapi import HTTPException, Request
 from fastapi.security import OAuth2AuthorizationCodeBearer
-from httpx import AsyncClient, HTTPStatusError
+from httpx import get
 from jose import JWTError, jwt
 
 env_client_id = getenv("OAUTH_CLIENT_ID")
@@ -28,26 +28,38 @@ class Oauth2AuthBase(OAuth2AuthorizationCodeBearer):
         *,
         tenant_id: str | None = env_tenant_id,
         client_id: str | None = env_client_id,
-        url_tenant_id: str | None = env_tenant_id or "common",
+        url_tenant_id: str | None = "common",
         auto_error: bool = True,
     ) -> None:
-        if not tenant_id:
-            raise HTTPException(status_code=500, detail="Missing tenant_id")
-        if not client_id:
-            raise HTTPException(status_code=500, detail="Missing client_id")
+        assert tenant_id, "Missing tenant_id"
+        assert client_id, "Missing client_id"
+        self.client_id = client_id
+        self.tenant_id = tenant_id
+        self.url_tenant_id = url_tenant_id
+        self._fetch_tenant_config()
         super().__init__(
-            authorizationUrl=f"https://login.microsoftonline.com/{url_tenant_id}/oauth2/authorize",
-            tokenUrl=f"https://login.microsoftonline.com/{url_tenant_id}/oauth2/token",
-            description="Graph API Token Authentication. `Leave client_secret blank`",
-            scheme_name="GraphAPITokenAuth",
+            authorizationUrl=self.authorizationUrl,
+            tokenUrl=self.tokenUrl,
+            description="Microsoft Token Authentication. `Leave client_secret blank`",
+            scheme_name="MicrosoftTokenAuth",
             scopes={"User.Read": "User.Read"},
             auto_error=auto_error,
         )
         self.scope = "User.Read"
-        self.keys_url = f"https://login.microsoftonline.com/{url_tenant_id}/discovery/keys?appid={client_id}"
-        self.tenant_keys: dict | None = None
-        self.client_id = client_id
-        self.tenant_id = tenant_id
+
+    def _fetch_tenant_config(self) -> None:
+        # Graph API Tokens are V1 always
+        r = get(
+            f"https://login.microsoftonline.com/{self.url_tenant_id}/.well-known/openid-configuration?appid={self.client_id}"
+        )
+        r.raise_for_status()
+        config = r.json()
+        self.authorizationUrl = config["authorization_endpoint"]
+        self.tokenUrl = config["token_endpoint"]
+        self.issuer = config["issuer"].replace("{tenantid}", self.tenant_id)
+        jwks_response = get(config["jwks_uri"])
+        jwks_response.raise_for_status()
+        self.tenant_keys = jwks_response.json()
 
     async def __call__(self, request: Request) -> str | None:
         """Validate the token received.
@@ -73,7 +85,9 @@ class Oauth2AuthBase(OAuth2AuthorizationCodeBearer):
             HTTPException: If self.auto_error is True and the token is invalid or missing required scopes.
         """
         token = await super().__call__(request)
-        if token is not None:
+        if token is None:
+            return None
+        else:
             try:
                 validated_token = await self._validate_token(token)
                 # This decoded token can be used for getting more info about the user
@@ -85,17 +99,6 @@ class Oauth2AuthBase(OAuth2AuthorizationCodeBearer):
                 if self.auto_error:
                     raise e
                 return None
-        return None
-
-    async def load_keys(self) -> None:
-        """Load the tenant keys from Microsoft."""
-        try:
-            async with AsyncClient(timeout=10) as client:
-                jwks_response = await client.get(self.keys_url)
-                jwks_response.raise_for_status()
-                self.tenant_keys = jwks_response.json()
-        except HTTPStatusError:
-            raise HTTPException(status_code=500, detail="Failure loading signing keys")
 
     async def _validate_token(self, token: str) -> dict[str, Any]:
         """Validate the token against the tenant keys and the `User.Read` scope.
@@ -112,17 +115,12 @@ class Oauth2AuthBase(OAuth2AuthorizationCodeBearer):
         ------
             HTTPException: If the token is invalid or missing required scopes.
         """
-        if self.tenant_keys is None:
-            await self.load_keys()
-        if not self.tenant_keys:
-            raise HTTPException(status_code=500, detail="Missing signing keys")
-
         try:
             decoded_token = jwt.decode(
                 token=token,
                 key=self.tenant_keys,
                 audience="00000002-0000-0000-c000-000000000000",
-                issuer=f"https://sts.windows.net/{self.tenant_id}/",
+                issuer=self.issuer,
                 options={
                     "require_aud": True,
                     "require_iat": True,

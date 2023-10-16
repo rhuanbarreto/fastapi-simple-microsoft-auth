@@ -21,12 +21,6 @@ app = FastAPI(
 )
 
 
-@app.on_event("startup")
-async def _() -> None:
-    """Load OpenID config on startup."""
-    await _azure_scheme.load_keys()
-
-
 @app.get("/", tags=["Test"])
 async def main(req: Request) -> str:
     return f"Hello {req.state.decoded_token['given_name']}!"
