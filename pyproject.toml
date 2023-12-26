@@ -12,7 +12,7 @@ documentation = "https://github.com/rhuanbarreto/fastapi-simple-microsoft-auth"
 
 [tool.poetry.dependencies]
 python = ">=3.8 <4"
-fastapi = "^0.103.2"
+fastapi = "^0.108.0"
 httpx = "^0.25.0"
 python-jose = {extras = ["cryptography"], version = "^3.3.0"}
 
